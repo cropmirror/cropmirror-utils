@@ -14,8 +14,8 @@ pip install poetry
 poetry config repositories.testpypi https://test.pypi.org/legacy/
 poetry config http-basic.testpypi __token__ <testpypi_token> # pypi-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 
-# 本地打包测试
-
+# 本地环境
+poetry install
 
 #打包上传
 
@@ -33,6 +33,6 @@ poetry add geopandas
 poetry build
 pip install ./dist/cropmirror-0.0.7.tar.gz
 
-# import
+# 
 # from cropmirror import example
 ```
