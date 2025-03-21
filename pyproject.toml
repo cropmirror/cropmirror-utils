@@ -1,18 +1,30 @@
 [project]
-name = "cropmirror_utils"
-version = "0.0.1"
+name = "cropmirror"
+version = "0.0.7"
 description = "云稷基础算法库"
 readme = "README.md"
-authors = [{ name = "Long.liu" },{name = "Wenchang"}]
-license = { text = "MIT License"}
-requires-python = ">=3.6"
+authors = [{ name = "Long.liu" }, { name = "Wenchang" }]
+license = { text = "MIT License" }
+requires-python = ">=3.9"
 classifiers = [
     "Programming Language :: Python :: 3",
     "Operating System :: OS Independent",
     "License :: OSI Approved :: MIT License",
 ]
-dependencies = []
+dependencies = ["geopandas (>=1.0.1,<2.0.0)"]
+
+[project.urls]
+# homepage = "https://cropmirror.com/cropmirror-utils.org/"
+repository = "https://github.com/cropmirror/cropmirror-utils"
+# documentation = "https://cropmirror.com/cropmirror-utils/docs/"
+"Bug Tracker" = "https://github.com/cropmirror/cropmirror-utils/issues"
+
+[tool.poetry]
+packages = [
+    { include = "cropmirror", from = "src" ,to="cropmirror"}, #import cropmirror
+    { include = "example", from = "src",to="cropmirror" }, #
+]
 
 [build-system]
-requires = ["setuptools>=61.0"]
-build-backend = "setuptools.build_meta"
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
