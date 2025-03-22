@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<algorithm>
+
+    <modelVersion>0.0.1</modelVersion>
+
+    <scene>cropmirror.agrifield</scene>
+    <!-- ; 1. 大田农业；agrifield
+    ; 2. 田块农业；agriplot
+    ; 3. 设施农业；greenhouse
+    ; 4. 户外蔬菜；vegetation
+    ; 5. 果园场景；orchard
+    ; 6. 林下场景；underforest
+    ; 7. 森林场景；forest
+    ; 8. 舍内养殖；livestock
+    ; 9. 河道巡检：river; 
+    ; 10. 植物工厂：plantfactory -->
+
+    <datasource>sentinel2</datasource>
+    <!-- ; sentinel1
+    ; sentinel2
+    ; spacety
+    ; planetlabs
+    ; gaofen2
+    ; gaofen3
+    ; djim3m
+    ; djip4m
+    ; djim3e
+    ; djim3td 大疆机场2
+    ; djim4td 大疆机场3
+    ; djim4d
+    ; camera
+    ; dog
+    ; humanoid
+    ; yusense_MS600
+    ; yusense_MS600pro
+    ; cmg (通用格式:CropMirrorGeneral) -->
+    <Theme>NDVI</Theme>
+    <!--NDVI: NDVI 
+    长势监测: VigorMonitoring 
+    ; 生物量估算: BiomassEstimation 
+    ; 倒伏检测: LodgingDetection 
+    ; 成熟度判定: MaturityAssessment 
+    ; 缺素诊断: NutrientDeficiency
+    ; 播种质量监测: SeedingQuality
+    ; 品种鉴别: CultivarID 
+    ; 病虫害识别: PestDiseaseRecognition 
+    ; 病斑分割: DiseaseSegmentation 
+    ; 虫口密度估算: PestDensityEstimation 
+    ; 杂草识别: WeedRecognition 
+    ; 长势评估: GrowthAssessment 
+    ; 生长速率评估: GrowthRateAssessment 
+    ; 生长速率评估: GrowthRateAssessment 
+    ; 蒸散量估算: ET_Estimation
+    ; 肥力热点图生成: FertilizerHotspot
+    ; 灌溉缺口检测: IrrigationGap
+    ; 变量施肥处方生成: VarFertilizerRx
+    ; 播种密度优化决策: SeedingDensityOpt
+    ; 倒伏风险预警: LodgingRiskAlert
+    ; 成熟度动态建模: MaturityDynamic
+    ; 变量施药处方：VarSprayRx
+    ；播种处方: SeedingRx
+    ; 灌溉处方: IrrigationRx
+    ; 耕作处方: TillageRx
+    ; 收获处方: HarvestRx
+    ; 施药路径规划: TargetSprayPath
+    -->
+    <version>1.0.0</version>
+
+    <formation>geojson</formation>
+    <!-- ; geotiff
+    ; shapefiel
+    ; geojson
+    ; jpg -->
+
+
+    <!-- 其他算法配置 -->
+</algorithm>
+
+
+
