@@ -45,8 +45,6 @@ class IrrigationPrescription:
         self.initial_soil_moisture = initial_soil_moisture  # mm 初始土壤含水量 (毫米)
         self.target_soil_moisture = target_soil_moisture  # 目标土壤含水量 (毫米)
 
-
-
     def run(self):
         # reclassify
         reclassify(self._ndvi_tif, self._files._reclassify_file, level_num=self._num)

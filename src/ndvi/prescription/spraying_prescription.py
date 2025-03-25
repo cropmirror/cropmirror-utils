@@ -4,23 +4,17 @@ from .files import NdviFiles
 from ...utils.geotiff_toolkit.reclassify import reclassify, raster2vector
 from ...utils.shp_toolkit.toolkit import clip_shp_by_polygon, ShpToolkit
 from .common import valued_dpm_shp_postpro
-class SprayingPrescription(Spraying):
-    def __init__(
-        self,
-        ndvi_tif,
-        geometry: dict,
-        num=5,
-        workspace=".",
-        **kwargs
-    ):
 
+
+class SprayingPrescription(Spraying):
+    def __init__(self, ndvi_tif, geometry: dict, num=5, workspace=".", **kwargs):
 
         self._ndvi_tif = ndvi_tif
         self._num = num
         self._geometry = geometry
         self._workspace = workspace
         self._files = NdviFiles(self._workspace)
-        Spraying.__init__(self,**kwargs)
+        Spraying.__init__(self, **kwargs)
 
     def run(self):
         reclassify(self._ndvi_tif, self._files._reclassify_file, level_num=self._num)
@@ -36,7 +30,7 @@ class SprayingPrescription(Spraying):
         # self.agri_operation_input_values = self.nutrients_balance_calculation_base_fertilization()
 
         # 这里选择变量施肥量的计算方法：人工分段指定法；节肥率法；养分平衡法；
-        
+
         values, average_value = self.risk_based_pesticide_spraying(
             self._ndvi_tif, self._files._dpm_shp_file, self.recommended_dose
         )
