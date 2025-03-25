@@ -1,117 +1,81 @@
-import datetime
 import logging
-import fiona
-import os
-import pyproj
-from osgeo import gdal, ogr
+
 import math
-import numpy as np
-import pandas as pd
-import json
-import geopandas as gpd
-from shapely.geometry import Point, Polygon
-from pathlib import Path
+from .common import get_zone_indexes
 
-
-
-from tqdm import tqdm, trange
-import rasterio as rio
-import rasterio.sample  # 否则pyinstaller打包时会报错;
-import rasterio.vrt  # 否则pyinstaller打包时会报错;
-import rasterio._features  # 否则pyinstaller打包时会报错;
-from rasterio.plot import show
-from rasterio.windows import Window
-from rasterio.enums import Resampling
-import os
-from fiona.crs import from_epsg
-from typing import List
-from rasterstats import zonal_stats
-import sys
 
 class Fertilization:
     # 根据作物类型设置每千克产量的氮磷钾需求量
-    crop_demand_g_per_kg={
-        "wheat":{
-            "nitrogen": 25.0,
-            "porphorus": 12.0,
-            "kassium": 20.0
-        },
-        "maize":{
-            "nitrogen": 25.0,
-            "porphorus": 12.0,
-            "kassium": 20.0
-        },
+    crop_demand_g_per_kg = {
+        "wheat": {"nitrogen": 25.0, "porphorus": 12.0, "kassium": 20.0},
+        "maize": {"nitrogen": 25.0, "porphorus": 12.0, "kassium": 20.0},
     }
     # 根据作物类型和生育期设置氮需求量比例
-    nitrogen_demand_ratio={
-            "wheat": {
-                "seeding_wheat": 0.15,  # 苗期
-                "tillering_wheat": 0.35,  # 分蘖期
-                "jointing_wheat": 0.25,  # 拔节期
-                "booting_wheat": 0.15,  # 抽穗期
-                "grain_filling_wheat": 0.10,  # 灌浆期
-            },
-            "maize": {
-                "emergence_maize": 0.10,  # 出苗期
-                "vegetative_maize": 0.40,  # 营养生长期
-                "tasseling_maize": 0.30,  # 抽雄期
-                "grain_filling_maize": 0.20,  # 灌浆期
-            },
-        }
+    nitrogen_demand_ratio = {
+        "wheat": {
+            "seeding_wheat": 0.15,  # 苗期
+            "tillering_wheat": 0.35,  # 分蘖期
+            "jointing_wheat": 0.25,  # 拔节期
+            "booting_wheat": 0.15,  # 抽穗期
+            "grain_filling_wheat": 0.10,  # 灌浆期
+        },
+        "maize": {
+            "emergence_maize": 0.10,  # 出苗期
+            "vegetative_maize": 0.40,  # 营养生长期
+            "tasseling_maize": 0.30,  # 抽雄期
+            "grain_filling_maize": 0.20,  # 灌浆期
+        },
+    }
     # 根据作物类型和生育期设置钾需求量比例
-    kassium_demand_ratio={
-            "wheat": {
-                "seeding_wheat": 0.15,  # 苗期
-                "tillering_wheat": 0.35,  # 分蘖期
-                "jointing_wheat": 0.25,  # 拔节期
-                "booting_wheat": 0.15,  # 抽穗期
-                "grain_filling_wheat": 0.10,  # 灌浆期
-            },
-            "maize": {
-                "emergence_maize": 0.10,  # 出苗期
-                "vegetative_maize": 0.40,  # 营养生长期
-                "tasseling_maize": 0.30,  # 抽雄期
-                "grain_filling_maize": 0.20,  # 灌浆期
-            },
-        }
+    kassium_demand_ratio = {
+        "wheat": {
+            "seeding_wheat": 0.15,  # 苗期
+            "tillering_wheat": 0.35,  # 分蘖期
+            "jointing_wheat": 0.25,  # 拔节期
+            "booting_wheat": 0.15,  # 抽穗期
+            "grain_filling_wheat": 0.10,  # 灌浆期
+        },
+        "maize": {
+            "emergence_maize": 0.10,  # 出苗期
+            "vegetative_maize": 0.40,  # 营养生长期
+            "tasseling_maize": 0.30,  # 抽雄期
+            "grain_filling_maize": 0.20,  # 灌浆期
+        },
+    }
     # 根据作物类型和生育期设置磷需求量比例
-    porphorus_demand_ratio={
-            "wheat": {
-                "seeding_wheat": 0.15,  # 苗期
-                "tillering_wheat": 0.35,  # 分蘖期
-                "jointing_wheat": 0.25,  # 拔节期
-                "booting_wheat": 0.15,  # 抽穗期
-                "grain_filling_wheat": 0.10,  # 灌浆期
-            },
-            "maize": {
-                "emergence_maize": 0.10,  # 出苗期
-                "vegetative_maize": 0.40,  # 营养生长期
-                "tasseling_maize": 0.30,  # 抽雄期
-                "grain_filling_maize": 0.20,  # 灌浆期
-            },
-        }
+    porphorus_demand_ratio = {
+        "wheat": {
+            "seeding_wheat": 0.15,  # 苗期
+            "tillering_wheat": 0.35,  # 分蘖期
+            "jointing_wheat": 0.25,  # 拔节期
+            "booting_wheat": 0.15,  # 抽穗期
+            "grain_filling_wheat": 0.10,  # 灌浆期
+        },
+        "maize": {
+            "emergence_maize": 0.10,  # 出苗期
+            "vegetative_maize": 0.40,  # 营养生长期
+            "tasseling_maize": 0.30,  # 抽雄期
+            "grain_filling_maize": 0.20,  # 灌浆期
+        },
+    }
+
     def __init__(
         self,
         fertilizer_type="base",  # 基肥
         fertilizer_form="mixed",  # 混合肥 or 单质肥
         fertilizer_npk_ratio=[15, 15, 15],  # NPK 比例
-        fertilizer_average_value_manual = 375, # kg/ha 人工输入的平均施肥量
-
+        fertilizer_average_value_manual=375,  # kg/ha 人工输入的平均施肥量
         # --- crop related variables ---
         crop_type="maize",
         crop_phenology="tasseling_maize",  #'tillering',
-        
         # 未用
         crop_variaties="明科玉77",  #'鲁单9088', 未用
-        
         crop_target_yield_kg_per_ha=10000,  # kg/ha, ex: 10000 kg/ha = 10 t/ha
-        
-        crop_nitrogen_use_efficiency=0.3, # 土壤有关?
+        crop_nitrogen_use_efficiency=0.3,  # 土壤有关?
         # --- crop porphorus related variables ---
         crop_porphorus_use_efficiency=0.3,
         # --- crop kassium related variables ---
         crop_kassium_use_efficiency=0.3,
-
         # 未用 追肥
         # --- weather related variables ---
         weather_station_id="CN101010100",
@@ -134,13 +98,11 @@ class Fertilization:
         # weather_cumulative_snowdepth = 0.0,
         # weather_cumulative_snowmelt = 0.0,
         # --- soil related variables ---
-
         soil_alkali_hydrolyzable_n_mg_per_kg=191.32,  # mg/kg
         soil_available_p_mg_per_kg=34.251,  # mg/kg
         soil_available_k_mg_per_kg=250.177,  # mg/kg
         soil_bulk_density_kg_per_m3=1300,  # kg/m^3
         soil_layer_depth_cm=20,  # cm; 只考虑20cm耕层的土壤养分
-        
         # 未用  基肥
         soil_type="sandy loam",
         soil_pH=6.0,
@@ -162,37 +124,44 @@ class Fertilization:
         fertilizer_application_method="spraying",
         fertilizer_application_machine="T60",
     ) -> None:
-        
+
         # --- dpm related variables ---
 
-        self.fertilizer_type = fertilizer_type # base;follow
-        self.fertilizer_form = fertilizer_form # single;mixed
-        self.fertilizer_npk_ratio = fertilizer_npk_ratio # for mixed
+        self.fertilizer_type = fertilizer_type  # base;follow
+        self.fertilizer_form = fertilizer_form  # single;mixed
+        self.fertilizer_npk_ratio = fertilizer_npk_ratio  # for mixed
         self.fertilizer_average_value_manual = fertilizer_average_value_manual
         # --- crop related variables ---
         self.crop_type = crop_type
         self.crop_phenology = crop_phenology  #'tillering',
         self.crop_variaties = crop_variaties  #'鲁单9088',
-        self.crop_target_yield_kg_per_ha = crop_target_yield_kg_per_ha  # kg/ha, ex: 10000 kg/ha = 10 t/ha
+        self.crop_target_yield_kg_per_ha = (
+            crop_target_yield_kg_per_ha  # kg/ha, ex: 10000 kg/ha = 10 t/ha
+        )
 
         # --- crop nitrogen related variables ---
-        self.crop_nitrogen_demand_g_per_kg = self.crop_demand_g_per_kg[crop_type]["nitrogen"]  # pure N, 纯氮
+        self.crop_nitrogen_demand_g_per_kg = self.crop_demand_g_per_kg[crop_type][
+            "nitrogen"
+        ]  # pure N, 纯氮
         self.crop_nitrogen_use_efficiency = crop_nitrogen_use_efficiency
 
-
         # --- crop porphorus related variables ---
-        self.crop_porphorus_demand_g_per_kg = self.crop_demand_g_per_kg[crop_type]["porphorus"]
+        self.crop_porphorus_demand_g_per_kg = self.crop_demand_g_per_kg[crop_type][
+            "porphorus"
+        ]
         self.crop_porphorus_use_efficiency = crop_porphorus_use_efficiency
 
         # --- crop kassium related variables ---
-        self.crop_kassium_demand_g_per_kg = self.crop_demand_g_per_kg[crop_type]["kassium"]  # K2O
+        self.crop_kassium_demand_g_per_kg = self.crop_demand_g_per_kg[crop_type][
+            "kassium"
+        ]  # K2O
         self.crop_kassium_use_efficiency = crop_kassium_use_efficiency
 
         # 从字典中获取当前作物类型及当前生育期对应的氮肥比例
         self.ratio_nitrogen = self.nitrogen_demand_ratio[crop_type][crop_phenology]
         # 从字典中获取当前作物类型及当前生育期对应的磷肥比例
         self.ratio_porphorus = self.porphorus_demand_ratio[crop_type][crop_phenology]
-         # 从字典中获取当前作物类型及当前生育期对应的钾肥比例
+        # 从字典中获取当前作物类型及当前生育期对应的钾肥比例
         self.ratio_kassium = self.kassium_demand_ratio[crop_type][crop_phenology]
 
         # --- weather related variables ---
@@ -219,7 +188,9 @@ class Fertilization:
         # --- soil related variables ---
         self.soil_type = soil_type
         self.soil_pH = soil_pH
-        self.soil_alkali_hydrolyzable_n_mg_per_kg = soil_alkali_hydrolyzable_n_mg_per_kg  # mg/kg
+        self.soil_alkali_hydrolyzable_n_mg_per_kg = (
+            soil_alkali_hydrolyzable_n_mg_per_kg  # mg/kg
+        )
         self.soil_available_p_mg_per_kg = soil_available_p_mg_per_kg  # mg/kg
         self.soil_available_k_mg_per_kg = soil_available_k_mg_per_kg  # mg/kg
         self.soil_bulk_density_kg_per_m3 = soil_bulk_density_kg_per_m3  # kg/m^3
@@ -268,7 +239,9 @@ class Fertilization:
         return max(fertilizer_amount_n, fertilizer_amount_p, fertilizer_amount_k)
 
     # 依据养分平衡方程，判断基肥的施肥量
-    def nutrients_balance_calculation_base_fertilization(self,geotiff_file,valued_shp_file):
+    def nutrients_balance_calculation_base_fertilization(
+        self, geotiff_file, valued_shp_file
+    ):
         """
         Calculate the fertilizer requirements based on soil nutrient content, crop requirements, and residual nutrients.
         This function should be updated according to the specific crop type and growth stage.
@@ -277,9 +250,9 @@ class Fertilization:
         # Example inputs: these would be fetched or calculated based on the crop and soil data
         # crop_type = "maize"  # Example crop type, could be passed as a parameter or part of the class
         # crop_phenology = "tillering"  # Example growth stage
-        
-        zone_indexes = self.get_zone_indexes(geotiff_file,valued_shp_file)
-        
+
+        zone_indexes = get_zone_indexes(geotiff_file, valued_shp_file)
+
         crop_type = self.crop_type
         crop_phenology = self.crop_phenology
 
@@ -288,7 +261,9 @@ class Fertilization:
             self.crop_target_yield_kg_per_ha * self.crop_nitrogen_demand_g_per_kg / 1000
         )  # kg 纯氮, 这几行代码上面应该添加针对氮需求量的描述；
         crop_total_porphorus_demand = (
-            self.crop_target_yield_kg_per_ha * self.crop_porphorus_demand_g_per_kg / 1000
+            self.crop_target_yield_kg_per_ha
+            * self.crop_porphorus_demand_g_per_kg
+            / 1000
         )  # kg P2O5
         crop_total_kassium_demand = (
             self.crop_target_yield_kg_per_ha * self.crop_kassium_demand_g_per_kg / 1000
@@ -344,8 +319,12 @@ class Fertilization:
         #     # Add more crops as needed
         # }
 
-        nutrient_requirements_nitrogen = crop_total_nitrogen_demand * self.ratio_nitrogen
-        nutrient_requirements_porphorus = crop_total_porphorus_demand * self.ratio_porphorus
+        nutrient_requirements_nitrogen = (
+            crop_total_nitrogen_demand * self.ratio_nitrogen
+        )
+        nutrient_requirements_porphorus = (
+            crop_total_porphorus_demand * self.ratio_porphorus
+        )
         nutrient_requirements_kassium = crop_total_kassium_demand * self.ratio_kassium
 
         # Residual nutrients from previous applications (hypothetical)
@@ -436,74 +415,3 @@ class Fertilization:
 
     # 依据养分平衡方程，判断追肥的施肥量
     # def nutrients_balance_calculation_follow_fertilization(self):
-
-    def get_zone_indexes(self, geotiff_file, shp_file):
-        """
-        Calculate the average NDVI or other pixel values for each unique value in the shapefile,
-        based on the GeoTIFF raster data.
-
-        :param geotiff_file: Path to the GeoTIFF file (e.g., NDVI data).
-        :param shp_file: Path to the shapefile that defines zones with 'value' attribute.
-        :return: A dictionary where keys are unique 'value' attributes and values are the average NDVI for each.
-        """
-        try:
-            # 读取形状文件 (Shapefile)
-            zones_gdf = gpd.read_file(shp_file)
-
-            # 确保 'value' 字段存在
-            if "value" not in zones_gdf.columns:
-                raise ValueError("'value' column not found in the Shapefile")
-
-            # 读取 GeoTIFF 文件
-            with rasterio.open(geotiff_file) as src:
-                affine = src.transform  # 获取地理变换信息
-                raster = src.read(1)  # 读取第一波段数据，假设 NDVI 或其他指数在第一波段
-
-            # 获取唯一的 value 属性
-            unique_values = zones_gdf["value"].unique()
-
-            # 存储每个 'value' 的平均值
-            value_mean_dict = {}
-
-            # 对每个 'value' 进行 zonal_stats 计算
-            for val in unique_values:
-                # 提取 Shapefile 中与当前 'value' 对应的多边形
-                value_zones = zones_gdf[zones_gdf["value"] == val]
-
-                # 计算该 'value' 区域的栅格平均值
-                zone_stats = zonal_stats(
-                    value_zones,
-                    raster,
-                    affine=affine,
-                    stats=["mean"],
-                    nodata=src.nodata,
-                )
-
-                # 提取统计结果的平均值
-                value_mean = sum(
-                    [stat["mean"] for stat in zone_stats if stat["mean"] is not None]
-                ) / len(zone_stats)
-
-                # 将平均值存入字典
-                value_mean_dict[val] = value_mean
-
-            # 输出每个 'value' 的平均值（NDVI 等）
-            for value, mean_value in value_mean_dict.items():
-                logging.info(f"Value {value} average NDVI: {mean_value}")
-
-            return value_mean_dict
-
-        except Exception as e:
-            raise Exception(f"Error calculating zone indexes: {e}")
-
-
-# # 示例使用
-# if __name__ == "__main__":
-#     spray = Spraying(
-#         pesticide_type="insecticide",
-#         pest_risk_level="high",
-#         geotiff_file="pest_risk.tif",
-#         shp_file="zones.shp"
-#     )
-#     prescription = spray.generate_spraying_map()
-#     print("灌溉处方图:", Irrigation)
