@@ -1,11 +1,14 @@
-class Ndvi(object):
+from ndvi.preprocess.ndvi import Ndvi
+
+
+class VigorMonitoring(Ndvi):
     def __init__(self, ndvi_tif: str):
         """初始化 解析ndvi_tif 文件
 
         Args:
             ndvi_tif (str): ndvi tif 文件路径
         """
-        self._ndvi_tif = ndvi_tif
+        super().__init__(ndvi_tif=ndvi_tif)
         
         pass
 
