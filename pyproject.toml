@@ -35,6 +35,7 @@ packages = [
     { include = "example", from = "src", to = "cropmirror" }, # from cropmirror import example
     { include = "ndvi", from = "src", to = "cropmirror" },    # from cropmirror import ndvi
     { include = "utils", from = "src", to = "cropmirror" },   # from cropmirror import utils
+    { include = "rgb", from = "src", to = "cropmirror" },   # from cropmirror import utils
 ]
 
 [build-system]

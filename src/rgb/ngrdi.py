@@ -3,6 +3,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from skimage.feature import graycomatrix, graycoprops
 from osgeo import gdal
+import os
+import subprocess
 
 # 设置matplotlib中文字体
 plt.rcParams['font.sans-serif'] = ['SimHei']
@@ -18,6 +20,25 @@ def process_ngrdi(image_path):
     Returns:
         tuple: (处理后的图像, 叶片掩码, 原始图像)
     """
+
+    # 切割为小图片，逐个处理。因为不确定工作目录的情况，所以暂时注释掉
+    '''
+    # 把大的tif切割成多个4000*3500的小块，这样内存足够处理
+    tmp_dir = os.path.dirname(image_path) + '/tmp/'
+    if not os.path.exists(tmp_dir):
+        os.mkdir(tmp_dir)
+    command = f"gdal_retile.py -ps 4000 3500 -targetDir {tmp_dir} {image_path}"
+
+    try:
+        subprocess.check_call(command, shell=True)
+    except subprocess.CalledProcessError as e:
+        print(f"Subprocess failed with code {e.returncode}")
+    
+    sub_images = os.listdir(tmp_dir)
+    for sub_image in sub_images:
+        print (sub_image)
+    '''
+
     # 读取图像
     img = cv2.imread(image_path)
     ## 读取图像
@@ -32,6 +53,7 @@ def process_ngrdi(image_path):
     geotransform = dataset1.GetGeoTransform()
 
     return img, projection, geotransform
+    
 
 def get_display_region(mask):
     """获取有效显示区域的边界框"""
@@ -66,25 +88,26 @@ def calculate_ngrdi(image):
     return pseudo_ndvi
 
 #def analyze_leaf(image_path, show_visualization=True):
-def gen_ngrdi(image_bytes):
+def gen_ngrdi(in_tif, out_tif):
     """综合分析叶片特征"""
     # 处理图像
     #result, mask, original = process_leaf_image(image_path, show_visualization=False)
-    original, projection, geotransform = process_ngrdi(image_bytes)
-    
+    original, projection, geotransform = process_ngrdi(in_tif)
+    '''
     # 计算各项指标
-    ndvi = calculate_ngrdi(original)
-    result = cv2.imwrite('./test.tif', ndvi)
-    dataset = gdal.Open('./test.tif', gdal.GA_Update)
+    ngrdi = calculate_ngrdi(original)
+    result = cv2.imwrite(out_tif, ngrdi)
+    dataset = gdal.Open(out_tif, gdal.GA_Update)
     dataset.SetGeoTransform( geotransform )
     dataset.SetProjection( projection )
+    '''
     
-    return result
+    return True
 
 if __name__ == "__main__":
-    image_path = 'rgb_orthophoto_2025_03_27_110432.tif'
+    image_path = '/Users/baoyonghui/Downloads/cropmirror-utils-test/rgb_orthophoto_2025_03_27_110432.tif'
     try:
-        results = gen_ngrdi(image_path)
+        results = gen_ngrdi(image_path, '/Users/baoyonghui/Downloads/cropmirror-utils-test/result.tif')
         print (results)
     except Exception as e:
         print(f"处理过程中出现错误: {str(e)}") 
