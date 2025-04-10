@@ -93,14 +93,14 @@ def gen_ngrdi(in_tif, out_tif):
     # 处理图像
     #result, mask, original = process_leaf_image(image_path, show_visualization=False)
     original, projection, geotransform = process_ngrdi(in_tif)
-    '''
+    
     # 计算各项指标
     ngrdi = calculate_ngrdi(original)
     result = cv2.imwrite(out_tif, ngrdi)
     dataset = gdal.Open(out_tif, gdal.GA_Update)
     dataset.SetGeoTransform( geotransform )
     dataset.SetProjection( projection )
-    '''
+    
     
     return True
 
