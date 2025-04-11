@@ -1,10 +1,10 @@
 import cv2
 import numpy as np
 import matplotlib.pyplot as plt
-from skimage.feature import graycomatrix, graycoprops
+# from skimage.feature import graycomatrix, graycoprops
 from osgeo import gdal
-import os
-import subprocess
+# import os
+# import subprocess
 
 # 设置matplotlib中文字体
 plt.rcParams['font.sans-serif'] = ['SimHei']
