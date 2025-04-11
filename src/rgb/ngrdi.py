@@ -93,21 +93,23 @@ def gen_ngrdi(in_tif, out_tif):
     # 处理图像
     #result, mask, original = process_leaf_image(image_path, show_visualization=False)
     original, projection, geotransform = process_ngrdi(in_tif)
-    '''
+    
     # 计算各项指标
     ngrdi = calculate_ngrdi(original)
     result = cv2.imwrite(out_tif, ngrdi)
     dataset = gdal.Open(out_tif, gdal.GA_Update)
     dataset.SetGeoTransform( geotransform )
     dataset.SetProjection( projection )
-    '''
+    
     
     return True
 
 if __name__ == "__main__":
-    image_path = '/Users/baoyonghui/Downloads/cropmirror-utils-test/rgb_orthophoto_2025_03_27_110432.tif'
+    # image_path = '/Users/baoyonghui/Downloads/cropmirror-utils-test/rgb_orthophoto_2025_03_27_110432.tif'
+    image_path = 'D://cropmirror//cropmirror-utils//src//rgb//rgb_orthophoto_2025_01_09_222535.tif'
     try:
-        results = gen_ngrdi(image_path, '/Users/baoyonghui/Downloads/cropmirror-utils-test/result.tif')
+        # results = gen_ngrdi(image_path, '/Users/baoyonghui/Downloads/cropmirror-utils-test/result.tif')
+        results = gen_ngrdi(image_path, 'D://cropmirror//cropmirror-utils//src//rgb//rgb_orthophoto_2025_01_09_222535_result.tif')
         print (results)
     except Exception as e:
         print(f"处理过程中出现错误: {str(e)}") 
