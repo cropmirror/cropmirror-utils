@@ -1,6 +1,6 @@
 [project]
 name = "cropmirror"
-version = "0.0.7"
+version = "0.0.9"
 description = "云稷基础算法库"
 readme = "README.md"
 authors = [{ name = "Long.liu" }, { name = "Wenchang" }]
@@ -20,8 +20,9 @@ dependencies = [
     "fiona (>=1.10.1,<2.0.0)",
     "rasterio (>=1.4.3,<2.0.0)",
     "scipy (>=1.15.2,<2.0.0)",
-    "numpy (>=2.2.4,<3.0.0)",
+    "numpy (>=2.1.0)",
     "rasterstats (>=0.20.0,<0.21.0)",
+    "opencv-python (>=4.11.0.86,<5.0.0.0)",
 ]
 
 [project.urls]
